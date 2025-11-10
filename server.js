@@ -1,12 +1,17 @@
 const express = require("express");
 const app = express();
+const dotenv = require("dotenv");
+const connectDB = require("./shared/middlewares/connect-db");
+
+dotenv.config();
 
 // Middleware
 app.use(express.json());
+app.use(connectDB);
 
 // Import route files
 const destinationRoutes = require("./modules/destinations/routes/destinationRoutes");
-console.log("Destination Routes:", destinationRoutes);
+console.log("Destination routes file loaded ");
 
 const userRoutes = require("./modules/users/routes/userRoutes");
 
@@ -25,6 +30,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal Server Error" });
 });
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
-});
+const PORT  = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+ 

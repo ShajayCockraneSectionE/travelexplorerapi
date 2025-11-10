@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const Destination = require("../models/destinationSchema");
+const { validateDestination } = require("../middlewares/destinationValidation");
+
 
 const {
     getAllDestinations,
@@ -8,39 +11,72 @@ const {
     updateDestination,
     deleteDestination,
 } = require("../models/destinationModel");
-const { validateDestination } = require("../middlewares/destinationValidation");
 
 //To get all destinations
-router.get("/", (req, res) => {
-    const data = getAllDestinations();
-    res.status(200).json(data);
+router.get("/", async (req, res) => {
+    try {
+        const { search, sort, page = 1, limit = 5 } = req.query;
+        const query = search ? {name: new RegExp(search, "i") } : {};
+        const results = await Destination.find(query)
+        .sort(sort ? {[sort]: 1 } : {})
+        .skip((page -1) * limit)
+        .limit(Number(limit));
+
+        res.json(results);
+    } catch (err) {
+        res.status(500).json({ message: err.message});
+    }
+
 });
 
 //Get destination by name
-router.get("/:name", (req, res) => {
-    const dest = getDestinationByName(req.params.name);
+router.get("/:name", async (req, res) => {
+    try {
+    const dest = await Destination.findOne({ name: req.params.name});
     if (!dest) return res.status(404).json({ message: "Destination not found"});
-    res.status(200).json(dest);
+    res.json(dest);
+    } catch (err) {
+        res.status(500).json({ message: err.message});
+    }
 });
 
 //To add new destination
-router.post("/", validateDestination, (req, res) => {
-    const newDest = addDestination(req.body);
+router.post("/", validateDestination, async (req, res) => {
+    try {
+    const newDest = new Destination (req.body);
+    await newDest.save();
     res.status(201).json(newDest);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
 });
 
 //To update destination
-router.put("/:name", (req, res) => {
-    const updated = updateDestination(req.params.name, req.body);
-    if (!updated) return res.status(404).json({ message: "Destination not found"});
-    res.status(200).json(updated);
+router.put("/:name", async (req, res) => {
+    try {
+        const updated = await Destination.findOneAndUpdate(
+            {name: req.params.name},
+            req.body,
+            {new: true }
+        );
+        if (!updated) return res.status(404).json({ message: "Destination not found" });
+        res.json(updated);
+    } catch (err) {
+        res.status(400).json({ message: err.message});
+    }
+    
 });
 
 //To delete destination
-router.delete("/:name", (req, res) => {
-    const sucess = deleteDestination(req.params.name);
-    if (!sucess) return res.status(404).json({ message: "Destination not found"});
-    res.status(200).json({ message: "Destination deleted succesfully"});
+router.delete("/:name", async (req, res) => {
+    try {
+        const deleted = await Destination.findOneAndDelete({ name: req.params.name});
+        if (!deleted) return res.status(404).json({message: "Destination not found" });
+        res.json({ message: "Destination deleted successfully"});
+    } catch (err) {
+        res.status(500).json({ message: err.message});
+    }
 });
+    
 
 module.exports = router;
