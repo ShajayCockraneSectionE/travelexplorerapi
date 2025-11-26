@@ -2,12 +2,14 @@ const express = require("express");
 const app = express();
 const dotenv = require("dotenv");
 const connectDB = require("./shared/middlewares/connect-db");
+const cors = require("cors");
 
 dotenv.config();
 
 // Middleware
 app.use(express.json());
 app.use(connectDB);
+app.use(cors());
 
 // Import route files
 const destinationRoutes = require("./modules/destinations/routes/destinationRoutes");
