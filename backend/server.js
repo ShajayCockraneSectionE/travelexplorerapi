@@ -5,21 +5,25 @@ const connectDB = require("./shared/middlewares/connect-db");
 const cors = require("cors");
 
 dotenv.config();
+connectDB();
 
 // Middleware
 app.use(express.json());
-app.use(connectDB);
 app.use(cors());
 
 // Import route files
 const destinationRoutes = require("./modules/destinations/routes/destinationRoutes");
-console.log("Destination routes file loaded ");
-
 const userRoutes = require("./modules/users/routes/userRoutes");
+const adminRoutes = require("./modules/admin/routes/adminRoutes");
+const customerRoutes = require("./modules/customers/routes/customerRoutes");
+
+console.log("Destination routes file loaded");
 
 // Mount routes
 app.use("/api/destinations", destinationRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/customer", customerRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -32,6 +36,5 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal Server Error" });
 });
 
-const PORT  = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
- 

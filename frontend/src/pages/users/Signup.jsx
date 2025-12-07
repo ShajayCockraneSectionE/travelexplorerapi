@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, TextField, Button, Typography } from "@mui/material";
-import axiosClient from "../../api/axiosClient";
+import axiosClient from "../../api/axios";
 import { useNavigate } from "react-router-dom";
 
 export default function Signup() {
