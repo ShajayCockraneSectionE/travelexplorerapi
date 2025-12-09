@@ -2,29 +2,36 @@ import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  Grid,
   Paper,
   Button,
+  TextField,
   List,
   ListItem,
   ListItemText,
+  Chip,
+  Stack,
 } from "@mui/material";
 import axiosClient from "../../api/axiosClient";
 
 export default function UsersList() {
   const [users, setUsers] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const loadUsers = async () => {
+  const load = async (overridePage) => {
     try {
-      const res = await axiosClient.get("/users"); // GET all users
-      setUsers(res.data);
+      const currentPage = overridePage ?? page;
+      const res = await axiosClient.get("/users", {
+        params: {
+          page: currentPage,
+          search: search || undefined,
+        },
+      });
 
-      // Pick the first user (or you can pick based on email later)
-      if (res.data.length > 0) {
-        setCurrentUser(res.data[0]);
-      }
-
+      setUsers(res.data.data || []);
+      setTotalPages(res.data.totalPages || 1);
+      if (overridePage != null) setPage(overridePage);
     } catch (err) {
       console.error(err);
       alert("Failed to load users");
@@ -32,78 +39,95 @@ export default function UsersList() {
   };
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, search]);
 
-  if (!currentUser) {
-    return <Typography>No user data found.</Typography>;
-  }
+  const del = async (email, role) => {
+    if (role === "admin") return; // safety
+    if (!window.confirm("Delete this user?")) return;
+    try {
+      await axiosClient.delete(`/users/${email}`);
+      // reload current page
+      if (users.length === 1 && page > 1) {
+        load(page - 1);
+      } else {
+        load(page);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete user");
+    }
+  };
 
   return (
-    <Box sx={{ mt: 3 }}>
-      {/* PAGE TITLE */}
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: "bold" }}>
-        USER PROFILE
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="h4" sx={{ fontWeight: "bold", mb: 2 }}>
+        Admin — Manage Users 👥
       </Typography>
 
-      {/* WELCOME MESSAGE */}
-      <Typography variant="h6" sx={{ mb: 3 }}>
-        Welcome back, {currentUser.name || currentUser.email}!
-      </Typography>
+      <TextField
+        placeholder="Search by email..."
+        sx={{ mb: 2 }}
+        fullWidth
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          // whenever search changes, reset to page 1
+          setPage(1);
+        }}
+      />
 
-      <Grid container spacing={3}>
+      <Paper sx={{ p: 2 }}>
+        <List>
+          {users.map((u, i) => (
+            <ListItem key={i} divider>
+              <ListItemText
+                primary={u.email}
+                secondary={
+                  u.createdAt
+                    ? `Joined ${new Date(u.createdAt).toLocaleDateString()}`
+                    : "Joined N/A"
+                }
+              />
 
-        {/* LEFT COLUMN — FAVORITES */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, bgcolor: "rgba(255,255,255,0.85)" }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: "bold" }}>
-              Your Favourites
-            </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip
+                  label={u.role.toUpperCase()}
+                  color={u.role === "admin" ? "primary" : "default"}
+                />
+                <Button
+                  color="error"
+                  disabled={u.role === "admin"}
+                  onClick={() => del(u.email, u.role)}
+                >
+                  DELETE
+                </Button>
+              </Stack>
+            </ListItem>
+          ))}
+        </List>
+      </Paper>
 
-            <List>
-              {currentUser.favorites?.length > 0 ? (
-                currentUser.favorites.map((fav, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText primary={fav} />
-                  </ListItem>
-                ))
-              ) : (
-                <Typography>No favourites yet.</Typography>
-              )}
-            </List>
-
-            <Button variant="contained" color="error" fullWidth sx={{ mt: 2 }}>
-              Remove Favourites
-            </Button>
-          </Paper>
-        </Grid>
-
-        {/* RIGHT COLUMN — BOOKINGS */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, bgcolor: "rgba(255,255,255,0.85)" }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: "bold" }}>
-              Your Bookings
-            </Typography>
-
-            <List>
-              {currentUser.bookings?.length > 0 ? (
-                currentUser.bookings.map((book, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText primary={book} />
-                  </ListItem>
-                ))
-              ) : (
-                <Typography>No bookings yet.</Typography>
-              )}
-            </List>
-
-            <Button variant="contained" color="error" fullWidth sx={{ mt: 2 }}>
-              Remove Bookings
-            </Button>
-          </Paper>
-        </Grid>
-
-      </Grid>
+      {/* Pagination Controls */}
+      <Box
+        sx={{ mt: 3, display: "flex", justifyContent: "center", gap: 2 }}
+      >
+        <Button
+          variant="outlined"
+          disabled={page === 1}
+          onClick={() => load(page - 1)}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outlined"
+          disabled={page === totalPages}
+          onClick={() => load(page + 1)}
+        >
+          Next
+        </Button>
+      </Box>
     </Box>
   );
 }

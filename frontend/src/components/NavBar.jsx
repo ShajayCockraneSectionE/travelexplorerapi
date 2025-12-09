@@ -1,4 +1,4 @@
-import React from "react";
+ import React from "react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
@@ -8,7 +8,7 @@ import Airplane from "../assets/Airplane.jpg";
 
 export default function NavBar({ isLoggedIn }) {
   const navigate = useNavigate();
-  const role = localStorage.getItem("role");
+  const role = localStorage.getItem("role"); // admin or customer
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -22,23 +22,42 @@ export default function NavBar({ isLoggedIn }) {
       <Toolbar>
         <img src={Airplane} alt="logo" style={{ width: 40, marginRight: 10 }} />
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          Travel Explorer
+          Travel Explorer API
         </Typography>
 
-        {isLoggedIn && (
+        {/* Always visible */}
+        <Button color="inherit" component={RouterLink} to="/">
+          Home
+        </Button>
+
+        {isLoggedIn ? (
           <>
             <Button color="inherit" component={RouterLink} to="/destinations">
               Destinations
             </Button>
+
+            {/* ONLY customers have a profile */}
+            {role === "customer" && (
+              <Button color="inherit" component={RouterLink} to="/profile">
+                Profile
+              </Button>
+            )}
+
+            {/* ONLY admin can manage users */}
             {role === "admin" && (
               <Button color="inherit" component={RouterLink} to="/users">
                 Users
               </Button>
             )}
+
             <Button color="inherit" onClick={handleLogout}>
               Logout
             </Button>
           </>
+        ) : (
+          <Button color="inherit" component={RouterLink} to="/auth">
+            Login / Signup
+          </Button>
         )}
       </Toolbar>
     </AppBar>

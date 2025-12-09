@@ -1,3 +1,4 @@
+// src/pages/AuthPage.jsx
 import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 import { useState } from "react";
 import axiosClient from "../api/axiosClient";
@@ -10,17 +11,20 @@ export default function AuthPage({ setIsLoggedIn }) {
 
   const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
+  const startOTPFlow = async () => {
+    localStorage.setItem("mfaEmail", form.email);
+    navigate("/otp");
+  };
+
   const handleLogin = async () => {
     if (!form.email || !form.password) {
       setMessage("Email and password required");
       return;
     }
+
     try {
-      // Request backend to send OTP after validating credentials
-      await axiosClient.post("/users/login", { email: form.email, password: form.password });
-      // store email temporarily for OTP step
-      localStorage.setItem("mfaEmail", form.email);
-      navigate("/otp");
+      await axiosClient.post("/users/login", form);
+      startOTPFlow();
     } catch (err) {
       console.error(err);
       setMessage(err?.response?.data?.message || "Login failed");
@@ -28,12 +32,17 @@ export default function AuthPage({ setIsLoggedIn }) {
   };
 
   const handleSignup = async () => {
+    if (!form.email || !form.password) {
+      setMessage("Please fill required fields");
+      return;
+    }
+
     try {
+      // Create user
       await axiosClient.post("/users/signup", form);
-      // After signup, automatically log in flow: request OTP
-      await axiosClient.post("/users/login", { email: form.email, password: form.password });
-      localStorage.setItem("mfaEmail", form.email);
-      navigate("/otp");
+      // Automatically go to OTP login
+      await axiosClient.post("/users/login", form);
+      startOTPFlow();
     } catch (err) {
       console.error(err);
       setMessage(err?.response?.data?.message || "Signup failed");
@@ -69,6 +78,3 @@ export default function AuthPage({ setIsLoggedIn }) {
     </Box>
   );
 }
-
-
-  

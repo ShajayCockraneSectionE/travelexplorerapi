@@ -5,22 +5,52 @@ const { validateDestination } = require("../../destinations/middlewares/destinat
 const authMiddleware = require("../../../shared/middlewares/authMiddleware");
 const roleMiddleware = require("../../../shared/middlewares/roleMiddleware");
 
-// Public list & search
+// ================================
+// GET ALL (PUBLIC) — with filters + pagination
+// ================================
 router.get("/", async (req, res) => {
   try {
-    const { search, sort, page = 1, limit = 5 } = req.query;
-    const query = search ? { name: new RegExp(search, "i") } : {};
-    const results = await Destination.find(query)
-      .sort(sort ? { [sort]: 1 } : {})
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
-    res.json(results);
+    const page = parseInt(req.query.page) || 1;
+    const limit = 6;
+    const skip = (page - 1) * limit;
+
+    const {
+      name,
+      country,
+      category,
+      minPrice,
+      maxPrice,
+      minRating,
+    } = req.query;
+
+    const filter = {};
+
+    if (name) filter.name = { $regex: name, $options: "i" };
+    if (country) filter.country = { $regex: country, $options: "i" };
+    if (category) filter.category = { $regex: category, $options: "i" };
+    if (minPrice) filter.pricePerPerson = { ...(filter.pricePerPerson || {}), $gte: Number(minPrice) };
+    if (maxPrice) filter.pricePerPerson = { ...(filter.pricePerPerson || {}), $lte: Number(maxPrice) };
+    if (minRating) filter.rating = { $gte: Number(minRating) };
+
+    const [destinations, total] = await Promise.all([
+      Destination.find(filter).skip(skip).limit(limit),
+      Destination.countDocuments(filter),
+    ]);
+
+    res.json({
+      data: destinations,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit) || 1,
+      totalItems: total,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Failed to load destinations" });
   }
 });
 
-// Get by name - public
+// ================================
+// GET BY NAME (PUBLIC)
+// ================================
 router.get("/:name", async (req, res) => {
   try {
     const dest = await Destination.findOne({ name: req.params.name });
@@ -31,8 +61,10 @@ router.get("/:name", async (req, res) => {
   }
 });
 
-// Protected: add - logged-in users (admin or customer)
-router.post("/", authMiddleware, validateDestination, async (req, res) => {
+// ================================
+// ADD DESTINATION (ADMIN ONLY)
+// ================================
+router.post("/", authMiddleware, roleMiddleware("admin"), validateDestination, async (req, res) => {
   try {
     const newDest = new Destination(req.body);
     await newDest.save();
@@ -42,10 +74,16 @@ router.post("/", authMiddleware, validateDestination, async (req, res) => {
   }
 });
 
-// Protected: update - admin only
+// ================================
+// UPDATE DESTINATION (ADMIN ONLY)
+// ================================
 router.put("/:name", authMiddleware, roleMiddleware("admin"), async (req, res) => {
   try {
-    const updated = await Destination.findOneAndUpdate({ name: req.params.name }, req.body, { new: true });
+    const updated = await Destination.findOneAndUpdate(
+      { name: req.params.name },
+      req.body,
+      { new: true }
+    );
     if (!updated) return res.status(404).json({ message: "Destination not found" });
     res.json(updated);
   } catch (err) {
@@ -53,7 +91,9 @@ router.put("/:name", authMiddleware, roleMiddleware("admin"), async (req, res) =
   }
 });
 
-// Protected: delete - admin only
+// ================================
+// DELETE DESTINATION (ADMIN ONLY)
+// ================================
 router.delete("/:name", authMiddleware, roleMiddleware("admin"), async (req, res) => {
   try {
     const deleted = await Destination.findOneAndDelete({ name: req.params.name });
