@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // 👈 pulls URL from .env
+  baseURL: import.meta.env.VITE_API_URL || "https://travel-explorer-api.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },
