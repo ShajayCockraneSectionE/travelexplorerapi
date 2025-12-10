@@ -9,10 +9,7 @@ connectDB();
 
 // Middleware
 app.use(express.json());
-app.use(cors({
-  origin: "https://travelexplorerapi-h1jqqddz7-shajay-cockranes-projects.vercel.app",
-  credentials: true
-}));
+app.use(cors());
 
 
 // Import route files
