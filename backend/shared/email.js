@@ -1,50 +1,49 @@
-// shared/email.js (or wherever your sendOTPEmail function is)
+// shared/email.js
 
-const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
-const GMAIL_USER = process.env.GMAIL_USER;
+const SENDER_EMAIL = process.env.GOOGLE_SENDER_EMAIL;
 
-const oAuth2Client = new google.auth.OAuth2(
-  CLIENT_ID,
-  CLIENT_SECRET,
-  "https://developers.google.com/oauthplayground"
-);
-
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET);
 oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-async function sendOTPEmail({ to, otp }) {
-  try {
-    const accessToken = await oAuth2Client.getAccessToken();
+const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: GMAIL_USER,
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken.token,
+async function sendEmail(to, subject, message) {
+  try {
+    const rawEmail = [
+      `From: ${SENDER_EMAIL}`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      "Content-Type: text/html; charset=UTF-8",
+      "",
+      `<p>${message}</p>`,
+    ];
+
+    const composedEmail = rawEmail.join("\n");
+
+    const encodedEmail = Buffer.from(composedEmail)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedEmail,
       },
     });
 
-    const mailOptions = {
-      from: `Travel Explorer OTP <${GMAIL_USER}>`,
-      to,
-      subject: "Your Travel Explorer OTP Code",
-      text: `Your OTP is: ${otp}. It expires in 5 minutes.`,
-    };
+    return true;
 
-    await transporter.sendMail(mailOptions);
-    console.log("OTP sent successfully!");
-  } catch (err) {
-    console.error("Error sending OTP:", err);
-    throw new Error("Failed to send OTP email");
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return false;
   }
 }
 
-module.exports = { sendOTPEmail };
+module.exports = sendEmail;
