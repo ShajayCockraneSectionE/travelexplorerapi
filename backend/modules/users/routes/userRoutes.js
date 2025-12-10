@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userSchema");
 const { validateUser } = require("../middlewares/userValidation");
 const { generateOTP } = require("../../../shared/utils/generateOTP");
-const { sendOTPEmail } = require("../../../shared/email");
+const  sendEmail = require("../../../shared/email");
 const authMiddleware = require("../../../shared/middlewares/authMiddleware");
 const roleMiddleware = require("../../../shared/middlewares/roleMiddleware");
 const Booking = require("../../../modules/bookings/models/bookingSchema");
@@ -53,7 +53,12 @@ router.post("/login", async (req, res) => {
     await user.save();
 
     try {
-      await sendOTPEmail({ to: user.email, otp });
+      await sendEmail(
+  user.email,
+  "Your OTP Code",
+  `Your OTP is: <b>${otp}</b>. It expires in 5 minutes.`
+);
+
     } catch (err) {
       console.error("Error sending OTP email:", err);
       return res.status(500).json({ message: "Failed to send OTP email" });
