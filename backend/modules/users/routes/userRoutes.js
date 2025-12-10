@@ -32,6 +32,7 @@ router.post("/signup", validateUser, async (req, res) => {
 // ================================
 // LOGIN → send OTP
 // ================================
+// Login - validate credentials then send OTP via email
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -44,12 +45,19 @@ router.post("/login", async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
-    // generate and save OTP
-    user.otp = generateOTP();
+    // generate OTP
+    const otp = generateOTP();
+    user.otp = otp;
     user.otpExpires = Date.now() + 5 * 60 * 1000;
+
     await user.save();
 
-    await sendOTPEmail({ to: user.email, otp: user.otp });
+    try {
+      await sendOTPEmail({ to: user.email, otp });
+    } catch (err) {
+      console.error("Error sending OTP email:", err);
+      return res.status(500).json({ message: "Failed to send OTP email" });
+    }
 
     return res.json({ message: "OTP sent to email" });
   } catch (err) {
