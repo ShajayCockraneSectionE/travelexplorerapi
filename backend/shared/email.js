@@ -1,57 +1,50 @@
-// backend/shared/email.js
+// shared/email.js (or wherever your sendOTPEmail function is)
+
 const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
 
-const OAuth2 = google.auth.OAuth2;
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
+const GMAIL_USER = process.env.GMAIL_USER;
 
-// Create OAuth client
-const oauth2Client = new OAuth2(
-  process.env.GMAIL_CLIENT_ID,
-  process.env.GMAIL_CLIENT_SECRET,
-  "https://developers.google.com/oauthplayground" // redirect URI
+const oAuth2Client = new google.auth.OAuth2(
+  CLIENT_ID,
+  CLIENT_SECRET,
+  "https://developers.google.com/oauthplayground"
 );
 
-// Attach refresh token
-oauth2Client.setCredentials({
-  refresh_token: process.env.GMAIL_REFRESH_TOKEN,
-});
+oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-/**
- * Send OTP email using Gmail API (OAuth2)
- * @param {{ to: string, otp: string }} param0
- */
 async function sendOTPEmail({ to, otp }) {
   try {
-    // Get fresh access token
-    const accessToken = await oauth2Client.getAccessToken();
+    const accessToken = await oAuth2Client.getAccessToken();
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         type: "OAuth2",
-        user: process.env.GMAIL_USER,
-        clientId: process.env.GMAIL_CLIENT_ID,
-        clientSecret: process.env.GMAIL_CLIENT_SECRET,
-        refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-        accessToken: accessToken?.token ?? accessToken,
+        user: GMAIL_USER,
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken.token,
       },
     });
 
     const mailOptions = {
-      from: `Travel Explorer <${process.env.GMAIL_USER}>`,
+      from: `Travel Explorer OTP <${GMAIL_USER}>`,
       to,
-      subject: "Your Travel Explorer OTP",
-      text: `Your OTP for Travel Explorer is: ${otp}. It expires in 5 minutes.`,
+      subject: "Your Travel Explorer OTP Code",
+      text: `Your OTP is: ${otp}. It expires in 5 minutes.`,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("OTP email sent:", info.messageId);
-    return info;
+    await transporter.sendMail(mailOptions);
+    console.log("OTP sent successfully!");
   } catch (err) {
-    console.error("Error sending OTP email:", err);
-    throw err; // let the caller (login route) handle it
+    console.error("Error sending OTP:", err);
+    throw new Error("Failed to send OTP email");
   }
 }
 
 module.exports = { sendOTPEmail };
-
