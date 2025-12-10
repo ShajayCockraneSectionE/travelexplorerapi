@@ -11,13 +11,25 @@ import {
   ListItemText
 } from "@mui/material";
 import axiosClient from "../../api/axiosClient";
+import { useNavigate } from "react-router-dom";
+
 
 const PAGE_SIZE = 5;
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [favPage, setFavPage] = useState(0);
   const [bookPage, setBookPage] = useState(0);
+
+  const token = localStorage.getItem("token");
+
+  //to redirect immeadiately if there is no token
+  if (!token) {
+    navigate("/login");
+    return null;
+  }
+
 
   const loadUser = async () => {
     try {
@@ -26,9 +38,15 @@ export default function ProfilePage() {
       setFavPage(0);
       setBookPage(0);
     } catch (err) {
+      console.error("PROFILE ERROR:", err?.response?.status);
+      if (err?.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }else {
       alert("Failed to load profile");
     }
-  };
+  }
+};
 
   useEffect(() => {
     loadUser();
