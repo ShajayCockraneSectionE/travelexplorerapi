@@ -13,7 +13,6 @@ import {
 import axiosClient from "../../api/axiosClient";
 import { useNavigate } from "react-router-dom";
 
-
 const PAGE_SIZE = 5;
 
 export default function ProfilePage() {
@@ -24,12 +23,11 @@ export default function ProfilePage() {
 
   const token = localStorage.getItem("token");
 
-  //to redirect immeadiately if there is no token
+  // Redirect immediately if no token (First time app loads on Vercel)
   if (!token) {
     navigate("/login");
     return null;
   }
-
 
   const loadUser = async () => {
     try {
@@ -38,20 +36,18 @@ export default function ProfilePage() {
       setFavPage(0);
       setBookPage(0);
     } catch (err) {
-      console.error("PROFILE ERROR:", err?.response?.status);
-      if (err?.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login");
-      }else {
-      alert("Failed to load profile");
+      console.error("PROFILE LOAD ERROR:", err?.response?.status);
+      localStorage.removeItem("token");
+      navigate("/login");
     }
-  }
-};
+  };
 
   useEffect(() => {
     loadUser();
   }, []);
 
+
+  // Pagination helper
   const paginate = (arr, page) => arr.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const clearFavs = async () => {
@@ -64,7 +60,14 @@ export default function ProfilePage() {
     loadUser();
   };
 
-  if (!user) return <Typography>Loading...</Typography>;
+  // Don't render UI until user is loaded (prevents null crashing UI)
+  if (!user) {
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h5">Loading profile...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ mt: 3 }}>
@@ -72,7 +75,7 @@ export default function ProfilePage() {
       <Typography variant="h6" sx={{ mb: 3 }}>Welcome back, {user.name || user.email}!</Typography>
 
       <Grid container spacing={4}>
-        
+
         {/* FAVOURITES */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
@@ -116,8 +119,8 @@ export default function ProfilePage() {
                 paginate(user.bookings, bookPage).map((b, i) => (
                   <ListItem key={i}>
                     <ListItemText
-                      primary={`${b.destination.name} (${b.destination.country}) — $${b.destination.pricePerPerson}/person`}
-                      secondary={`${b.fromDate.slice(0,10)} → ${b.toDate.slice(0,10)} | ${b.numPeople} people`}
+                      primary={`${b?.destination?.name} (${b?.destination?.country}) — $${b?.destination?.pricePerPerson}/person`}
+                      secondary={`${b?.fromDate?.slice(0,10)} → ${b?.toDate?.slice(0,10)} | ${b?.numPeople} people`}
                     />
                   </ListItem>
                 ))
